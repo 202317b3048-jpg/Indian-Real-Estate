@@ -1,24 +1,20 @@
-import streamlit as st
+mport streamlit as st
 import pandas as pd
 
-st.title("Real Estate Market Analyzer Vijayawada & Madurai")
+st.title("Real Estate Market Analyzer – Madurai")
 
-#Sidebar selection
-cities = ["Vijayawada", "Madurai"]
-selected_city = st.sidebar.selectbox("Select a city:", cities)
+# Load Madurai dataset
+@st.cache_data
+def load_data():
+    return pd.read_csv("Madurai.csv")  # exact filename
 
-#Load dataset based on selection
-def load_data(city):
-    if city == "Vijayawada":
- return pd.read_csv("Vijayawada.csv") #exact filename
-    else:
-       return pd.read_csv("Madurai.csv") #exact filename
- df =  load_data(selected_city)
- #Show dataset
-st.subheader(f"Dataset for (selected_city)")
+df = load_data()
+
+# Show dataset
+st.subheader("Dataset for Madurai")
 st.dataframe(df)
 
-#Summary statistics
-st.subheader("Summary Statiics")
+# Summary statistics
+st.subheader("Summary Statistics")
 st.write(df.describe())
  
