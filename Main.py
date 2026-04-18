@@ -1,43 +1,41 @@
 import streamlit as st
-import pandas as pd
 
-st.set_page_config(
-    page_title="Madurai Real Estate Market Dashboard",
-    layout="wide"
+# Page configuration
+st.set_page_config(page_title="Madurai Dashboard", layout="centered")
+
+# Title
+st.title("📍 Madurai, Tamil Nadu")
+
+# Subtitle
+st.subheader("Cultural Capital of Tamil Nadu")
+
+# Basic description
+st.write(
+    """
+Madurai is one of the oldest continuously inhabited cities in India.
+It is famous for the **Meenakshi Amman Temple**, rich Tamil culture,
+and vibrant street life.
+"""
 )
 
-st.title("🏠 Madurai Real Estate Market Dashboard")
+# Key information
+st.markdown("### 🧭 Quick Facts")
+st.write("- **State:** Tamil Nadu")
+st.write("- **Region:** Southern Tamil Nadu")
+st.write("- **Known for:** Temples, textiles, jasmine flowers")
 
+# Location coordinates
+st.markdown("### 📌 Location on Map")
+madurai_lat = 9.9252
+madurai_lon = 78.1198
 
-@st.cache_data
-def load_data():
-    return pd.read_csv("Madurai_RealEstate_Data.csv")
-
-
-df = load_data()
-
-
-st.subheader("📄 Dataset Preview")
-st.dataframe(df)
-
-
-st.subheader("📊 Summary Statistics")
-st.write(df.describe())
-
-
-st.subheader("💰 Average Price per Sqft by Locality")
-price_locality = df.groupby("Locality")["Price per Sqft (INR)"].mean()
-st.bar_chart(price_locality)
-
-
-st.subheader("📐 Built-up Area vs Estimated Sale Price")
-st.scatter_chart(
-    df[["Built-up Area (sqft)", "Estimated Sale Price (INR)"]]
+st.map(
+    [{"lat": madurai_lat, "lon": madurai_lon}]
 )
 
+# Simple interaction
+st.markdown("### 💬 Say Hello")
+name = st.text_input("Enter your name")
 
-st.subheader("🪑 Furnishing Status Distribution")
-furnishing = df["Furnishing Status"].value_counts()
-st.bar_chart(furnishing)
-
-
+if name:
+    st.success(f"Vanakkam, {name}! Welcome to Madurai 🙏")
