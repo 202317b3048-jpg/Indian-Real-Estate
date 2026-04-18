@@ -1,9 +1,10 @@
 import streamlit as st
 import pandas as pd
+import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="Madurai Real Estate Dashboard", layout="wide")
 
-st.title("Madurai Real Estate Market Dashboard")
+st.title("🏠 Madurai Real Estate Market Dashboard")
 
 # Load Excel file
 @st.cache_data
@@ -15,19 +16,19 @@ df = load_data()
 # =============================
 # DATA PREVIEW
 # =============================
-st.subheader("Dataset Preview")
+st.subheader("📄 Dataset Preview")
 st.dataframe(df)
 
 # =============================
 # SUMMARY STATISTICS
 # =============================
-st.subheader("Summary Statistics")
+st.subheader("📊 Summary Statistics")
 st.write(df.describe())
 
 # =============================
 # PRICE PER SQFT BY LOCALITY
 # =============================
-st.subheader("Average Price per Sqft by Locality")
+st.subheader("💰 Average Price per Sqft by Locality")
 
 price_locality = df.groupby("Locality")["Price per Sqft (INR)"].mean()
 
@@ -43,7 +44,7 @@ st.pyplot(fig1)
 # =============================
 # BUILT-UP AREA VS SALE PRICE
 # =============================
-st.subheader("Built-up Area vs Estimated Sale Price")
+st.subheader("📐 Built-up Area vs Estimated Sale Price")
 
 fig2, ax2 = plt.subplots()
 ax2.scatter(
@@ -59,7 +60,7 @@ st.pyplot(fig2)
 # =============================
 # PROPERTY COUNT BY FURNISHING
 # =============================
-st.subheader("Property Count by Furnishing Status")
+st.subheader("🪑 Property Count by Furnishing Status")
 
 furnishing_count = df["Furnishing Status"].value_counts()
 
@@ -73,7 +74,7 @@ st.pyplot(fig3)
 # =============================
 # RENTAL YIELD BY LOCALITY
 # =============================
-st.subheader("Average Rental Yield by Locality")
+st.subheader("📈 Average Rental Yield by Locality")
 
 rental_yield = df.groupby("Locality")["Rental Yield (%)"].mean()
 
@@ -87,7 +88,7 @@ st.pyplot(fig4)
 # =============================
 # BUYER ATTRACTION SCORE
 # =============================
-st.subheader(" Buyer Attraction Score Distribution")
+st.subheader("⭐ Buyer Attraction Score Distribution")
 
 fig5, ax5 = plt.subplots()
 ax5.hist(df["Buyer Attraction Score (1-10)"], bins=10)
@@ -100,7 +101,7 @@ st.pyplot(fig5)
 # =============================
 # INSIGHTS
 # =============================
-st.subheader("Key Insights")
+st.subheader("✅ Key Insights")
 st.markdown("""
 - Price varies significantly by **locality**
 - Larger built-up areas strongly increase **sale price**
@@ -108,4 +109,3 @@ st.markdown("""
 - Some localities offer **higher rental yield**, ideal for investors
 - Buyer Attraction Score helps identify **high-demand areas**
 """)
- 
