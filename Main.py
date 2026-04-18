@@ -1,8 +1,12 @@
 import streamlit as st
 import pandas as pd
+import os
 
 st.set_page_config(page_title="Madurai Real Estate Market Dashboard", layout="wide")
 st.title("🏠 Madurai Real Estate Market Dashboard")
+
+# Debug: show current files (helps detect name issues)
+st.write("Files in current directory:", os.listdir("."))
 
 @st.cache_data
 def load_data():
