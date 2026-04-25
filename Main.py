@@ -1,80 +1,67 @@
 import streamlit as st
 
-# ---------------------------
+# --------------------------------------------------
 # Page Configuration
-# ---------------------------
+# --------------------------------------------------
 st.set_page_config(
     page_title="Madurai Property Price Estimator",
     layout="centered"
 )
 
 st.title("🏡 Madurai Property Price Estimator")
-st.caption("Select your preferences to get an estimated property value")
+st.caption("Select your preferences to estimate the property value in Madurai")
 
-# ---------------------------
-# User Inputs
-# ---------------------------
-st.subheader("📋 Property Preferences")
+# --------------------------------------------------
+# Property Details Input
+# --------------------------------------------------
+st.subheader("📋 Property Details")
 
-locality = st.selectbox(
-    "Select Locality",
-    ["Anna Nagar", "KK Nagar", "Mattuthavani", "SS Colony", "Tallakulam", "Villapuram"]
-)
+locality = st.text_input("Locality")
 
 property_type = st.selectbox(
     "Property Type",
-    ["Apartment", "Independent House", "Villa"]
+    ["Apartment", "Independent House", "Villa", "Plot"]
 )
 
 built_up_area = st.number_input(
     "Built-up Area (sqft)",
-    min_value=300,
-    step=50
+    min_value=100,
+    step=10
 )
 
-bedrooms = st.selectbox(
-    "Bedrooms (BHK)",
-    [1, 2, 3, 4]
+price_per_sqft = st.number_input(
+    "Price per Sqft (INR)",
+    min_value=500,
+    step=100
 )
 
-# ---------------------------
-# Base price per sqft (sample values)
-# ---------------------------
-price_dict = {
-    "Anna Nagar": 5500,
-    "KK Nagar": 5000,
-    "Mattuthavani": 4200,
-    "SS Colony": 4500,
-    "Tallakulam": 6000,
-    "Villapuram": 3800
-}
+bedrooms = st.selectbox("Bedrooms (BHK)", [1, 2, 3, 4, 5])
+bathrooms = st.selectbox("Bathrooms", [1, 2, 3, 4])
 
-type_multiplier = {
-    "Apartment": 1.0,
-    "Independent House": 1.2,
-    "Villa": 1.4
-}
+property_age = st.number_input(
+    "Property Age (Years)",
+    min_value=0,
+    step=1
+)
 
-# ---------------------------
-# Estimate Button
-# ---------------------------
-if st.button("💰 Estimate Property Price"):
-    base_price = price_dict[locality]
-    multiplier = type_multiplier[property_type]
+facing = st.selectbox(
+    "Facing",
+    ["North", "South", "East", "West",
+     "North-East", "North-West", "South-East", "South-West"]
+)
 
-    estimated_price = built_up_area * base_price * multiplier
+furnishing_status = st.selectbox(
+    "Furnishing Status",
+    ["Unfurnished", "Semi-Furnished", "Fully Furnished"]
+)
 
-    st.success("✅ Property Value Estimated!")
+parking = st.radio("Parking Facility", ["Yes", "No"])
 
-    st.subheader("📊 Estimated Result")
-    st.write(f"**Locality:** {locality}")
-    st.write(f"**Property Type:** {property_type}")
-    st.write(f"**Area:** {built_up_area} sqft")
-    st.write(f"**Bedrooms:** {bedrooms} BHK")
+# --------------------------------------------------
+# Optional Distance & Amenities
+# --------------------------------------------------
+st.subheader("📏 Distance & Amenities (Optional)")
 
-    st.metric(
-        "Estimated Property Value",
-        f"₹ {estimated_price:,.0f}"
-    )
+distance_metro = st.number_input("Distance to Metro (km)", min_value=0.0, step=0.1)
 
-    st.caption("⚠️ This is an approximate value for reference only.")
+   
