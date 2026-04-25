@@ -1,190 +1,149 @@
 import streamlit as st
 import pandas as pd
-from datetime import datetime
+import sqlite3
+import os
+import joblib
+import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.preprocessing import LabelEncoder
 
-# Page configuration
-st.set_page_config(
-    page_title="Madurai Property Details",
-    layout="centered"
-)
+# =====================================================
+# Page Config
+# =====================================================
+st.set_page_config(page_title="Madurai Property AI", layout="centered")
+st.title("🏡 Madurai Property Price AI Dashboard")
+st.caption("ML-powered property analytics & price prediction")
 
-st.title("🏡 Madurai City Property Details")
-st.caption("Enter property information for Madurai")
+DATA_FILE = "madurai_property_data.csv"
+DB_FILE = "properties.db"
+MODEL_FILE = "price_model.pkl"
 
-# Initialize session state
-if "submitted_data" not in st.session_state:
-    st.session_state.submitted_data = []
+# =====================================================
+# Utility Functions
+# =====================================================
+@st.cache_data
+def load_data():
+    if os.path.exists(DATA_FILE):
+        return pd.read_csv(DATA_FILE)
+    return pd.DataFrame()
 
-# =========================
-# Property Form
-# =========================
+def save_to_db(df):
+    conn = sqlite3.connect(DB_FILE)
+    df.to_sql("properties", conn, if_exists="append", index=False)
+    conn.close()
+
+def train_model(df):
+    df = df.copy()
+    encoder = LabelEncoder()
+
+    for col in ["Property Type", "Furnishing", "Facing", "Parking"]:
+        df[col] = encoder.fit_transform(df[col])
+
+    X = df[
+        [
+            "Built-up Area (sqft)",
+            "Price per Sqft",
+            "Bedrooms",
+            "Bathrooms",
+            "Property Age",
+            "Metro Distance (km)",
+            "IT Hub Distance (km)",
+            "Parking"
+        ]
+    ]
+    y = df["Calculated Price"]
+
+    model = RandomForestRegressor(n_estimators=200, random_state=42)
+    model.fit(X, y)
+    joblib.dump(model, MODEL_FILE)
+    return model
+
+# =====================================================
+# Load Existing Data & Model
+# =====================================================
+df_existing = load_data()
+model = joblib.load(MODEL_FILE) if os.path.exists(MODEL_FILE) else None
+
+# =====================================================
+# Property Input Form
+# =====================================================
 with st.form("property_form"):
-    st.subheader("📍 Basic Property Information")
+    st.subheader("📋 Property Details")
 
     locality = st.text_input("Locality")
-
-    property_type = st.selectbox(
-        "Property Type",
-        ["Apartment", "Independent House", "Villa", "Plot"]
-    )
-
-    built_up_area = st.number_input(
-        "Built-up Area (sqft)",
-        min_value=100,
-        step=10
-    )
-
-    price_per_sqft = st.number_input(
-        "Price per Sqft (INR)",
-        min_value=500,
-        step=100
-    )
-
-    bedrooms = st.selectbox("Bedrooms (BHK)", [1, 2, 3, 4, 5])
+    property_type = st.selectbox("Property Type", ["Apartment", "Independent House", "Villa", "Plot"])
+    built_up_area = st.number_input("Built-up Area (sqft)", min_value=100, step=10)
+    price_per_sqft = st.number_input("Price per Sqft (INR)", min_value=500, step=100)
+    bedrooms = st.selectbox("Bedrooms", [1, 2, 3, 4, 5])
     bathrooms = st.selectbox("Bathrooms", [1, 2, 3, 4])
+    property_age = st.number_input("Property Age (years)", min_value=0)
+    facing = st.selectbox("Facing", ["North", "South", "East", "West"])
+    furnishing = st.selectbox("Furnishing", ["Unfurnished", "Semi-Furnished", "Fully Furnished"])
+    parking = st.radio("Parking", ["Yes", "No"])
+    distance_metro = st.number_input("Metro Distance (km)", min_value=0.0)
+    distance_it = st.number_input("IT Hub Distance (km)", min_value=0.0)
+    maintenance = st.number_input("Monthly Maintenance", min_value=0)
+    buyer_score = st.slider("Buyer Attraction Score", 1, 10)
 
-    property_age = st.number_input(
-        "Property Age (Years)",
-        min_value=0,
-        step=1
-    )
+    submit = st.form_submit_button("✅ Submit & Predict")
 
-    facing = st.selectbox(
-        "Facing",
-        ["North", "South", "East", "West",
-         "North-East", "North-West", "South-East", "South-West"]
-    )
-
-    furnishing_status = st.selectbox(
-        "Furnishing Status",
-        ["Unfurnished", "Semi-Furnished", "Fully Furnished"]
-    )
-
-    parking = st.radio("Parking Facility", ["Yes", "No"])
-
-    st.subheader("📏 Distance & Amenities (Optional)")
-
-    distance_metro = st.number_input(
-        "Distance to Metro (km)",
-        min_value=0.0,
-        step=0.1,
-        help="Enter 0 if metro is not nearby"
-    )
-
-    distance_it_hub = st.number_input(
-        "Distance to IT Hub (km)",
-        min_value=0.0,
-        step=0.1
-    )
-
-    nearby_schools = st.number_input(
-        "Nearby Schools (count)",
-        min_value=0,
-        step=1
-    )
-
-    nearby_hospitals = st.number_input(
-        "Nearby Hospitals (count)",
-        min_value=0,
-        step=1
-    )
-
-    st.subheader("💰 Financial Details")
-
-    maintenance = st.number_input(
-        "Monthly Maintenance (INR)",
-        min_value=0,
-        step=100
-    )
-
-    rental_yield = st.number_input(
-        "Rental Yield (%)",
-        min_value=0.0,
-        step=0.1
-    )
-
-    buyer_score = st.slider(
-        "Buyer Attraction Score (1–10)",
-        min_value=1,
-        max_value=10
-    )
-
-    submitted = st.form_submit_button("✅ Submit Property Details")
-
-# =========================
-# After Submission
-# =========================
-if submitted:
-    st.success("Property details submitted successfully!")
-
-    # Calculations
+# =====================================================
+# Submission Logic
+# =====================================================
+if submit:
     calculated_price = built_up_area * price_per_sqft
 
-    if calculated_price < 40_00_000:
-        price_segment = "Budget"
-    elif calculated_price < 80_00_000:
-        price_segment = "Mid-range"
-    else:
-        price_segment = "Premium"
-
-    if buyer_score >= 8:
-        buyer_insight = "🔥 High Buyer Demand"
-    elif buyer_score >= 5:
-        buyer_insight = "✅ Moderate Buyer Demand"
-    else:
-        buyer_insight = "⚠️ Low Buyer Demand"
-
-    # Warnings
-    if rental_yield > 15:
-        st.warning("Rental Yield seems unusually high.")
-
-    if property_age > 25:
-        st.warning("Older property – resale value may be impacted.")
-
-    # Data dictionary
-    property_data = {
-        "Date": datetime.now().strftime("%Y-%m-%d"),
+    new_data = {
         "Locality": locality,
         "Property Type": property_type,
         "Built-up Area (sqft)": built_up_area,
         "Price per Sqft": price_per_sqft,
-        "Calculated Price": calculated_price,
         "Bedrooms": bedrooms,
         "Bathrooms": bathrooms,
         "Property Age": property_age,
         "Facing": facing,
-        "Furnishing": furnishing_status,
+        "Furnishing": furnishing,
         "Parking": parking,
         "Metro Distance (km)": distance_metro,
-        "IT Hub Distance (km)": distance_it_hub,
-        "Schools Nearby": nearby_schools,
-        "Hospitals Nearby": nearby_hospitals,
+        "IT Hub Distance (km)": distance_it,
         "Maintenance": maintenance,
-        "Rental Yield (%)": rental_yield,
         "Buyer Score": buyer_score,
-        "Buyer Insight": buyer_insight,
-        "Price Segment": price_segment
+        "Calculated Price": calculated_price,
     }
 
-    # Save to CSV
-    df = pd.DataFrame([property_data])
-    df.to_csv(
-        "madurai_property_data.csv",
-        mode="a",
-        header=not st.session_state.submitted_data,
-        index=False
-    )
+    df_new = pd.DataFrame([new_data])
+    df_all = pd.concat([df_existing, df_new], ignore_index=True)
 
-    st.session_state.submitted_data.append(property_data)
+    # Save
+    df_all.to_csv(DATA_FILE, index=False)
+    save_to_db(df_new)
 
-    # =========================
-    # Display Summary
-    # =========================
-    st.markdown("### 📋 Property Summary")
-    st.json(property_data)
+    # Train model if needed
+    model = train_model(df_all)
 
-    # Insights
-    st.markdown("### 📊 Market Insights")
-    st.write(f"**Calculated Property Price:** ₹{calculated_price:,.0f}")
-    st.write(f"**Price Category:** {price_segment}")
-    st.write(f"**Buyer Demand:** {buyer_insight}")
+    # Prediction
+    parking_val = 1 if parking == "Yes" else 0
+    predicted_price = model.predict([[
+        built_up_area,
+        price_per_sqft,
+        bedrooms,
+        bathrooms,
+        property_age,
+        distance_metro,
+        distance_it,
+        parking_val
+    ]])[0]
+
+    st.success("✅ Property Saved Successfully!")
+
+    st.subheader("🤖 ML Price Prediction")
+    st.metric("Predicted Market Price", f"₹{predicted_price:,.0f}")
+    st.metric("Calculated Price", f"₹{calculated_price:,.0f}")
+
+# =====================================================
+# Charts & Analytics
+# =====================================================
+if not df_existing.empty:
+    st.subheader("📊 Locality-wise Price Trends")
+
+    
