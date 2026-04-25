@@ -4,7 +4,7 @@ import sqlite3
 import os
 
 
-from sklearn.ensemble import RandomForestRegressor
+
 from sklearn.preprocessing import LabelEncoder
 from joblib import dump, load
 
