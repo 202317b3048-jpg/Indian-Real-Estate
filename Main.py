@@ -1,8 +1,12 @@
 import streamlit as st
 import pandas as pd
 from datetime import datetime
+import os
+import matplotlib.pyplot as plt
 
+# ======================================
 # Page configuration
+# ======================================
 st.set_page_config(
     page_title="Madurai Property Details",
     layout="centered"
@@ -11,13 +15,21 @@ st.set_page_config(
 st.title("🏡 Madurai City Property Details")
 st.caption("Enter property information for Madurai")
 
-# Initialize session state
-if "submitted_data" not in st.session_state:
-    st.session_state.submitted_data = []
+DATA_FILE = "madurai_property_data.csv"
 
-# =========================
+# ======================================
+# Load existing data
+# ======================================
+def load_data():
+    if os.path.exists(DATA_FILE):
+        return pd.read_csv(DATA_FILE)
+    return pd.DataFrame()
+
+df_existing = load_data()
+
+# ======================================
 # Property Form
-# =========================
+# ======================================
 with st.form("property_form"):
     st.subheader("📍 Basic Property Information")
 
@@ -67,8 +79,7 @@ with st.form("property_form"):
     distance_metro = st.number_input(
         "Distance to Metro (km)",
         min_value=0.0,
-        step=0.1,
-        help="Enter 0 if metro is not nearby"
+        step=0.1
     )
 
     distance_it_hub = st.number_input(
@@ -111,18 +122,20 @@ with st.form("property_form"):
 
     submitted = st.form_submit_button("✅ Submit Property Details")
 
-# =========================
+# ======================================
 # After Submission
-# =========================
+# ======================================
 if submitted:
     st.success("Property details submitted successfully!")
 
+    # ------------------
     # Calculations
+    # ------------------
     calculated_price = built_up_area * price_per_sqft
 
-    if calculated_price < 40_00_000:
+    if calculated_price < 4_000_000:
         price_segment = "Budget"
-    elif calculated_price < 80_00_000:
+    elif calculated_price < 8_000_000:
         price_segment = "Mid-range"
     else:
         price_segment = "Premium"
@@ -134,14 +147,18 @@ if submitted:
     else:
         buyer_insight = "⚠️ Low Buyer Demand"
 
+    # ------------------
     # Warnings
+    # ------------------
     if rental_yield > 15:
         st.warning("Rental Yield seems unusually high.")
 
     if property_age > 25:
         st.warning("Older property – resale value may be impacted.")
 
-    # Data dictionary
+    # ------------------
+    # Create data record
+    # ------------------
     property_data = {
         "Date": datetime.now().strftime("%Y-%m-%d"),
         "Locality": locality,
@@ -166,26 +183,14 @@ if submitted:
         "Price Segment": price_segment
     }
 
-    # Save to CSV
-    df = pd.DataFrame([property_data])
-    df.to_csv(
-        "madurai_property_data.csv",
-        mode="a",
-        header=not st.session_state.submitted_data,
-        index=False
-    )
+    df_new = pd.DataFrame([property_data])
+    df_final = pd.concat([df_existing, df_new], ignore_index=True)
 
-    st.session_state.submitted_data.append(property_data)
+    df_final.to_csv(DATA_FILE, index=False)
 
-    # =========================
+    # ------------------
     # Display Summary
-    # =========================
+    # ------------------
     st.markdown("### 📋 Property Summary")
     st.json(property_data)
 
-    # Insights
-    st.markdown("### 📊 Market Insights")
-    st.write(f"**Calculated Property Price:** ₹{calculated_price:,.0f}")
-    st.write(f"**Price Category:** {price_segment}")
-    st.write(f"**Buyer Demand:** {buyer_insight}")
-      
