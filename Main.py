@@ -119,11 +119,107 @@ with st.form("property_form"):
     )
 
     it_distance = st.number_input(
+        "IT Hub Distance (km)",
+        min_value=0.0
+    )
 
+    buyer_score = st.slider(
+        "Buyer Attraction Score",
+        min_value=1,
+        max_value=10
+    )
 
+    submitted = st.form_submit_button("✅ Submit & Predict")
 
+# =====================================================
+# SUBMISSION LOGIC
+# =====================================================
+if submitted:
+    calculated_price = built_up_area * price_sqft
 
-    
+    new_row = {
+        "Locality": locality,
+        "Property Type": property_type,
+        "Built-up Area": built_up_area,
+        "Price per Sqft": price_sqft,
+        "Bedrooms": bedrooms,
+        "Bathrooms": bathrooms,
+        "Property Age": property_age,
+        "Facing": facing,
+        "Furnishing": furnishing,
+        "Parking": parking,
+        "Metro Distance": metro_distance,
+        "IT Hub Distance": it_distance,
+        "Buyer Score": buyer_score,
+        "Calculated Price": calculated_price
+    }
+
+    df_new = pd.DataFrame([new_row])
+    df_all = pd.concat([df_existing, df_new], ignore_index=True)
+
+    # Save data
+    df_all.to_csv(DATA_FILE, index=False)
+    save_to_db(df_new)
+
+    # Train ML model
+    model = train_model(df_all)
+
+    parking_value = 1 if parking == "Yes" else 0
+
+    predicted_price = model.predict([[
+        built_up_area,
+        price_sqft,
+        bedrooms,
+        bathrooms,
+        property_age,
+        metro_distance,
+        it_distance,
+        parking_value
+    ]])[0]
+
+    st.success("✅ Property saved successfully")
+
+    st.subheader("🤖 AI Price Prediction")
+    st.metric("Predicted Market Price", f"₹{predicted_price:,.0f}")
+    st.metric("Calculated Price", f"₹{calculated_price:,.0f}")
+
+# =====================================================
+# CHARTS & ANALYTICS
+# =====================================================
+if not df_existing.empty:
+    st.subheader("📊 Average Property Price by Locality")
+
+    avg_price = df_existing.groupby("Locality")["Calculated Price"].mean()
+
+    fig, ax = plt.subplots()
+    avg_price.plot(kind="bar", ax=ax)
+    ax.set_xlabel("Locality")
+    ax.set_ylabel("Average Price (INR)")
+    st.pyplot(fig)
+
+    st.subheader("🎯 Buyer Score Distribution")
+
+    fig2, ax2 = plt.subplots()
+    df_existing["Buyer Score"].plot(kind="hist", bins=10, ax=ax2)
+    ax2.set_xlabel("Buyer Score")
+    st.pyplot(fig2)
+
+# =====================================================
+# EXPORT FOR POWER BI / EXCEL
+# =====================================================
+st.subheader("📥 Export Data")
+
+if not df_existing.empty:
+    st.download_button(
+        "Download Excel (Power BI Ready)",
+        data=df_existing.to_excel(index=False),
+        file_name="madurai_property_data.xlsx"
+    )
+
+st.caption("SQLite DB file `properties.db` can be directly connected to Power BI")
+   
         
 
+    
+    
     
