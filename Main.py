@@ -3,7 +3,6 @@ import pandas as pd
 import sqlite3
 import os
 
-import matplotlib.pyplot as plt
 
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.preprocessing import LabelEncoder
