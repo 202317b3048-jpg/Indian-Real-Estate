@@ -124,5 +124,62 @@ if submitted:
         "Metro Distance": metro_distance,
         "IT Hub Distance": it_distance,
         "Buyer Score": buyer_score,
+        "Calculated Price": calculated_price
+    }
+
+    df_new = pd.DataFrame([new_data])
+    df_all = pd.concat([df_existing, df_new], ignore_index=True)
+
+    df_all.to_csv(DATA_FILE, index=False)
+    save_to_db(df_new)
+
+    model = train_model(df_all)
+
+    parking_val = 1 if parking == "Yes" else 0
+
+    predicted_price = model.predict([[
+        built_up_area,
+        price_sqft,
+        bedrooms,
+        bathrooms,
+        property_age,
+        metro_distance,
+        it_distance,
+        parking_val
+    ]])[0]
+
+    st.success("✅ Property details saved successfully!")
+
+    st.subheader("🤖 AI Price Prediction")
+    st.metric("Predicted Market Price", f"₹{predicted_price:,.0f}")
+    st.metric("Calculated Price", f"₹{calculated_price:,.0f}")
+
+# ======================================
+# Charts
+# ======================================
+if not df_existing.empty:
+    st.subheader("📊 Average Price by Locality")
+
+    avg_price = df_existing.groupby("Locality")["Calculated Price"].mean()
+    fig, ax = plt.subplots()
+    avg_price.plot(kind="bar", ax=ax)
+    ax.set_xlabel("Locality")
+    ax.set_ylabel("Average Price (INR)")
+    st.pyplot(fig)
+
+# ======================================
+# Export
+# ======================================
+if not df_existing.empty:
+    st.download_button(
+        "📥 Download Excel (Power BI Ready)",
+        data=df_existing.to_excel(index=False),
+        file_name="madurai_property_data.xlsx"
+    )
+
+st.caption("SQLite database `properties.db` is Power BI compatible")
+           
 
 
+   
+   
