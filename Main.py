@@ -21,11 +21,11 @@ DATA_FILE = "madurai_property_data.csv"
 # Load existing data
 # ======================================
 def load_data():
-    if os.path.exists(DATA_FILE):
+   
         return pd.read_csv(DATA_FILE)
     return pd.DataFrame()
 
-df_existing = load_data()
+
 
 # ======================================
 # Property Form
