@@ -17,8 +17,8 @@ st.set_page_config(
     layout="centered"
 )
 
-st.title("🏡 Madurai Property Price Prediction")
-st.caption("Machine‑learning powered real‑estate analytics")
+st.title("🏡 Madurai Property Price Prediction System")
+st.caption("ML‑based real‑estate analytics dashboard")
 
 DATA_FILE = "madurai_property_data.csv"
 DB_FILE = "properties.db"
@@ -39,8 +39,8 @@ def save_to_db(df):
 
 def train_model(df):
     df = df.copy()
-
     encoder = LabelEncoder()
+
     for col in ["Property Type", "Facing", "Furnishing", "Parking"]:
         df[col] = encoder.fit_transform(df[col])
 
@@ -56,7 +56,6 @@ def train_model(df):
             "Parking"
         ]
     ]
-
     y = df["Calculated Price"]
 
     model = RandomForestRegressor(
@@ -77,67 +76,44 @@ if os.path.exists(MODEL_FILE):
     model = load(MODEL_FILE)
 
 # =====================================================
-# PROPERTY FORM
+# PROPERTY INPUT FORM
 # =====================================================
 with st.form("property_form"):
     st.subheader("📋 Property Details")
 
     locality = st.text_input("Locality")
-
     property_type = st.selectbox(
         "Property Type",
-        ["Apartment", "House", "Villa", "Plot"]
+        ["Apartment", "Independent House", "Villa", "Plot"]
     )
-
     built_up_area = st.number_input(
-        "Built-up Area (sqft)",
-        min_value=100,
-        step=10
+        "Built-up Area (sqft)", min_value=100, step=10
     )
-
     price_sqft = st.number_input(
-        "Price per Sqft (INR)",
-        min_value=500,
-        step=100
+        "Price per Sqft (INR)", min_value=500, step=100
     )
-
     bedrooms = st.selectbox("Bedrooms", [1, 2, 3, 4, 5])
     bathrooms = st.selectbox("Bathrooms", [1, 2, 3, 4])
-    property_age = st.number_input("Property Age (years)", min_value=0)
-
+    property_age = st.number_input("Property Age (Years)", min_value=0)
     facing = st.selectbox("Facing", ["North", "South", "East", "West"])
     furnishing = st.selectbox(
         "Furnishing",
         ["Unfurnished", "Semi-Furnished", "Fully Furnished"]
     )
+    parking = st.radio("Parking Facility", ["Yes", "No"])
+    metro_distance = st.number_input("Metro Distance (km)", min_value=0.0)
+    it_distance = st.number_input("IT Hub Distance (km)", min_value=0.0)
+    buyer_score = st.slider("Buyer Attraction Score", 1, 10)
 
-    parking = st.radio("Parking Available", ["Yes", "No"])
-
-    metro_distance = st.number_input(
-        "Metro Distance (km)",
-        min_value=0.0
-    )
-
-    it_distance = st.number_input(
-        "IT Hub Distance (km)",
-        min_value=0.0
-    )
-
-    buyer_score = st.slider(
-        "Buyer Attraction Score",
-        min_value=1,
-        max_value=10
-    )
-
-    submitted = st.form_submit_button("✅ Submit & Predict")
+    submitted = st.form_submit_button("✅ Submit & Predict Price")
 
 # =====================================================
-# SUBMISSION LOGIC
+# SUBMISSION & PREDICTION
 # =====================================================
 if submitted:
     calculated_price = built_up_area * price_sqft
 
-    new_row = {
+    row = {
         "Locality": locality,
         "Property Type": property_type,
         "Built-up Area": built_up_area,
@@ -154,17 +130,15 @@ if submitted:
         "Calculated Price": calculated_price
     }
 
-    df_new = pd.DataFrame([new_row])
+    df_new = pd.DataFrame([row])
     df_all = pd.concat([df_existing, df_new], ignore_index=True)
 
-    # Save data
     df_all.to_csv(DATA_FILE, index=False)
     save_to_db(df_new)
 
-    # Train ML model
     model = train_model(df_all)
 
-    parking_value = 1 if parking == "Yes" else 0
+    parking_val = 1 if parking == "Yes" else 0
 
     predicted_price = model.predict([[
         built_up_area,
@@ -174,10 +148,10 @@ if submitted:
         property_age,
         metro_distance,
         it_distance,
-        parking_value
+        parking_val
     ]])[0]
 
-    st.success("✅ Property saved successfully")
+    st.success("✅ Property data saved successfully!")
 
     st.subheader("🤖 AI Price Prediction")
     st.metric("Predicted Market Price", f"₹{predicted_price:,.0f}")
@@ -187,39 +161,9 @@ if submitted:
 # CHARTS & ANALYTICS
 # =====================================================
 if not df_existing.empty:
-    st.subheader("📊 Average Property Price by Locality")
-
+    st.subheader("📊 Average Price by Locality")
     avg_price = df_existing.groupby("Locality")["Calculated Price"].mean()
 
     fig, ax = plt.subplots()
     avg_price.plot(kind="bar", ax=ax)
     ax.set_xlabel("Locality")
-    ax.set_ylabel("Average Price (INR)")
-    st.pyplot(fig)
-
-    st.subheader("🎯 Buyer Score Distribution")
-
-    fig2, ax2 = plt.subplots()
-    df_existing["Buyer Score"].plot(kind="hist", bins=10, ax=ax2)
-    ax2.set_xlabel("Buyer Score")
-    st.pyplot(fig2)
-
-# =====================================================
-# EXPORT FOR POWER BI / EXCEL
-# =====================================================
-st.subheader("📥 Export Data")
-
-if not df_existing.empty:
-    st.download_button(
-        "Download Excel (Power BI Ready)",
-        data=df_existing.to_excel(index=False),
-        file_name="madurai_property_data.xlsx"
-    )
-
-st.caption("SQLite DB file `properties.db` can be directly connected to Power BI")
-   
-        
-
-    
-    
-    
