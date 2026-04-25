@@ -1,4 +1,6 @@
 import streamlit as st
+import pandas as pd
+from datetime import datetime
 
 # Page configuration
 st.set_page_config(
@@ -9,11 +11,18 @@ st.set_page_config(
 st.title("🏡 Madurai City Property Details")
 st.caption("Enter property information for Madurai")
 
-# Form starts
+# Initialize session state
+if "submitted_data" not in st.session_state:
+    st.session_state.submitted_data = []
+
+# =========================
+# Property Form
+# =========================
 with st.form("property_form"):
     st.subheader("📍 Basic Property Information")
 
     locality = st.text_input("Locality")
+
     property_type = st.selectbox(
         "Property Type",
         ["Apartment", "Independent House", "Villa", "Plot"]
@@ -31,15 +40,8 @@ with st.form("property_form"):
         step=100
     )
 
-    bedrooms = st.selectbox(
-        "Bedrooms (BHK)",
-        [1, 2, 3, 4, 5]
-    )
-
-    bathrooms = st.selectbox(
-        "Bathrooms",
-        [1, 2, 3, 4]
-    )
+    bedrooms = st.selectbox("Bedrooms (BHK)", [1, 2, 3, 4, 5])
+    bathrooms = st.selectbox("Bathrooms", [1, 2, 3, 4])
 
     property_age = st.number_input(
         "Property Age (Years)",
@@ -49,7 +51,8 @@ with st.form("property_form"):
 
     facing = st.selectbox(
         "Facing",
-        ["North", "South", "East", "West", "North-East", "North-West", "South-East", "South-West"]
+        ["North", "South", "East", "West",
+         "North-East", "North-West", "South-East", "South-West"]
     )
 
     furnishing_status = st.selectbox(
@@ -57,17 +60,15 @@ with st.form("property_form"):
         ["Unfurnished", "Semi-Furnished", "Fully Furnished"]
     )
 
-    parking = st.radio(
-        "Parking Facility",
-        ["Yes", "No"]
-    )
+    parking = st.radio("Parking Facility", ["Yes", "No"])
 
     st.subheader("📏 Distance & Amenities (Optional)")
 
     distance_metro = st.number_input(
         "Distance to Metro (km)",
         min_value=0.0,
-        step=0.1
+        step=0.1,
+        help="Enter 0 if metro is not nearby"
     )
 
     distance_it_hub = st.number_input(
@@ -102,12 +103,6 @@ with st.form("property_form"):
         step=0.1
     )
 
-    estimated_price = st.number_input(
-        "Estimated Sale Price (INR)",
-        min_value=0,
-        step=10000
-    )
-
     buyer_score = st.slider(
         "Buyer Attraction Score (1–10)",
         min_value=1,
@@ -116,28 +111,80 @@ with st.form("property_form"):
 
     submitted = st.form_submit_button("✅ Submit Property Details")
 
-# Display summary after submission
+# =========================
+# After Submission
+# =========================
 if submitted:
     st.success("Property details submitted successfully!")
 
-    st.markdown("### 📋 Property Summary")
-    st.write({
+    # Calculations
+    calculated_price = built_up_area * price_per_sqft
+
+    if calculated_price < 40_00_000:
+        price_segment = "Budget"
+    elif calculated_price < 80_00_000:
+        price_segment = "Mid-range"
+    else:
+        price_segment = "Premium"
+
+    if buyer_score >= 8:
+        buyer_insight = "🔥 High Buyer Demand"
+    elif buyer_score >= 5:
+        buyer_insight = "✅ Moderate Buyer Demand"
+    else:
+        buyer_insight = "⚠️ Low Buyer Demand"
+
+    # Warnings
+    if rental_yield > 15:
+        st.warning("Rental Yield seems unusually high.")
+
+    if property_age > 25:
+        st.warning("Older property – resale value may be impacted.")
+
+    # Data dictionary
+    property_data = {
+        "Date": datetime.now().strftime("%Y-%m-%d"),
         "Locality": locality,
         "Property Type": property_type,
         "Built-up Area (sqft)": built_up_area,
-        "Price per Sqft (INR)": price_per_sqft,
-        "Bedrooms (BHK)": bedrooms,
+        "Price per Sqft": price_per_sqft,
+        "Calculated Price": calculated_price,
+        "Bedrooms": bedrooms,
         "Bathrooms": bathrooms,
-        "Property Age (Years)": property_age,
+        "Property Age": property_age,
         "Facing": facing,
-        "Furnishing Status": furnishing_status,
+        "Furnishing": furnishing_status,
         "Parking": parking,
-        "Distance to Metro (km)": distance_metro,
-        "Distance to IT Hub (km)": distance_it_hub,
-        "Nearby Schools": nearby_schools,
-        "Nearby Hospitals": nearby_hospitals,
-        "Monthly Maintenance (INR)": maintenance,
+        "Metro Distance (km)": distance_metro,
+        "IT Hub Distance (km)": distance_it_hub,
+        "Schools Nearby": nearby_schools,
+        "Hospitals Nearby": nearby_hospitals,
+        "Maintenance": maintenance,
         "Rental Yield (%)": rental_yield,
-        "Estimated Sale Price (INR)": estimated_price,
-        "Buyer Attraction Score": buyer_score
-    })
+        "Buyer Score": buyer_score,
+        "Buyer Insight": buyer_insight,
+        "Price Segment": price_segment
+    }
+
+    # Save to CSV
+    df = pd.DataFrame([property_data])
+    df.to_csv(
+        "madurai_property_data.csv",
+        mode="a",
+        header=not st.session_state.submitted_data,
+        index=False
+    )
+
+    st.session_state.submitted_data.append(property_data)
+
+    # =========================
+    # Display Summary
+    # =========================
+    st.markdown("### 📋 Property Summary")
+    st.json(property_data)
+
+    # Insights
+    st.markdown("### 📊 Market Insights")
+    st.write(f"**Calculated Property Price:** ₹{calculated_price:,.0f}")
+    st.write(f"**Price Category:** {price_segment}")
+    st.write(f"**Buyer Demand:** {buyer_insight}")
