@@ -1,133 +1,105 @@
 import streamlit as st
+import pandas as pd
+import matplotlib.pyplot as plt
 
-# --------------------------------------------------
-# Page Configuration
-# --------------------------------------------------
-st.set_page_config(
-    page_title="Madurai Property Price Estimator",
-    layout="centered"
+# Page config
+st.set_page_config(page_title="India Real Estate Dashboard", layout="wide")
+
+# Load data
+@st.cache_data
+def load_data():
+    df = pd.read_excel(
+        "Real_estate_data_India 2.xlsx",
+        sheet_name="Raw data",
+        engine="openpyxl"
+    )
+    return df
+
+df = load_data()
+
+# Title
+st.title("🏠 India Real Estate Market Dashboard")
+
+# Sidebar filters
+st.sidebar.header("Filters")
+
+states = st.sidebar.multiselect(
+    "Select State / UT",
+    options=df["State / Union Territory"].unique(),
+    default=df["State / Union Territory"].unique()[:5]
 )
 
-st.title("🏡 Madurai Property Price Estimator")
-st.caption("Select your preferences to estimate the property value in Madurai")
-
-# --------------------------------------------------
-# Property Details Input
-# --------------------------------------------------
-st.subheader("📋 Property Details")
-
-locality = st.text_input("Locality")
-
-property_type = st.selectbox(
-    "Property Type",
-    ["Apartment", "Independent House", "Villa", "Plot"]
+market_tier = st.sidebar.multiselect(
+    "Select Market Tier",
+    options=df["Market Tier"].unique(),
+    default=df["Market Tier"].unique()
 )
 
-built_up_area = st.number_input(
-    "Built-up Area (sqft)",
-    min_value=100,
-    step=10
+filtered_df = df[
+    (df["State / Union Territory"].isin(states)) &
+    (df["Market Tier"].isin(market_tier))
+]
+
+# KPI section
+st.subheader("📊 Key Metrics")
+
+col1, col2, col3 = st.columns(3)
+
+col1.metric(
+    "Average Price / Sqft (₹)",
+    f"{filtered_df['Price/sqft (₹)'].mean():,.0f}"
 )
 
-price_per_sqft = st.number_input(
-    "Price per Sqft (INR)",
-    min_value=500,
-    step=100
+col2.metric(
+    "Median House Price 2025 (₹ Lakh)",
+    f"{filtered_df['Median House Price (₹ Lakh) -2025'].mean():,.1f}"
 )
 
-bedrooms = st.selectbox("Bedrooms (BHK)", [1, 2, 3, 4, 5])
-bathrooms = st.selectbox("Bathrooms", [1, 2, 3, 4])
-
-property_age = st.number_input(
-    "Property Age (Years)",
-    min_value=0,
-    step=1
+col3.metric(
+    "Avg YoY Price Growth (%)",
+    f"{filtered_df['YoY Price Growth (%)'].mean():,.2f}"
 )
 
-facing = st.selectbox(
-    "Facing",
-    ["North", "South", "East", "West",
-     "North-East", "North-West", "South-East", "South-West"]
-)
+# Charts
+st.subheader("📈 Price Analysis")
 
-furnishing_status = st.selectbox(
-    "Furnishing Status",
-    ["Unfurnished", "Semi-Furnished", "Fully Furnished"]
-)
+col4, col5 = st.columns(2)
 
-parking = st.radio("Parking Facility", ["Yes", "No"])
-
-# --------------------------------------------------
-# Optional Distance & Amenities
-# --------------------------------------------------
-st.subheader("📏 Distance & Amenities (Optional)")
-
-distance_metro = st.number_input("Distance to Metro (km)", min_value=0.0, step=0.1)
-distance_it_hub = st.number_input("Distance to IT Hub (km)", min_value=0.0, step=0.1)
-nearby_schools = st.number_input("Nearby Schools (count)", min_value=0, step=1)
-nearby_hospitals = st.number_input("Nearby Hospitals (count)", min_value=0, step=1)
-
-# --------------------------------------------------
-# Financial Information
-# --------------------------------------------------
-st.subheader("💰 Financial Details")
-
-maintenance = st.number_input(
-    "Monthly Maintenance (INR)",
-    min_value=0,
-    step=100
-)
-
-rental_yield = st.number_input(
-    "Rental Yield (%)",
-    min_value=0.0,
-    step=0.1
-)
-
-buyer_score = st.slider(
-    "Buyer Attraction Score (1–10)",
-    min_value=1,
-    max_value=10
-)
-
-# --------------------------------------------------
-# Price Estimation Logic
-# --------------------------------------------------
-if st.button("💰 Estimate Property Value"):
-
-    # Base calculation
-    estimated_price = built_up_area * price_per_sqft
-
-    # Adjust price based on property age
-    estimated_price *= max(0.7, 1 - (property_age * 0.01))
-
-    # Adjust for furnishing
-    if furnishing_status == "Semi-Furnished":
-        estimated_price *= 1.05
-    elif furnishing_status == "Fully Furnished":
-        estimated_price *= 1.10
-
-    # Adjust for parking
-    if parking == "Yes":
-        estimated_price *= 1.03
-
-    st.success("✅ Property value estimated successfully!")
-
-    # --------------------------------------------------
-    # Display Result
-    # --------------------------------------------------
-    st.subheader("📊 Estimated Property Value")
-
-    st.write(f"**Locality:** {locality}")
-    st.write(f"**Property Type:** {property_type}")
-    st.write(f"**Built-up Area:** {built_up_area} sqft")
-    st.write(f"**Price per Sqft:** ₹{price_per_sqft}")
-    st.write(f"**Buyer Attraction Score:** {buyer_score}/10")
-    st.write(f"**Rental Yield:** {rental_yield}%")
-
-    st.metric(
-        label="💰 Estimated Sale Price (INR)",
-        value=f"₹ {estimated_price:,.0f}"
+# Average price per sqft by state
+with col4:
+    avg_price_state = (
+        filtered_df
+        .groupby("State / Union Territory")["Price/sqft (₹)"]
+        .mean()
+        .sort_values(ascending=False)
     )
 
-    st.caption("⚠️ Estimated value is indicative and for reference only.")
+    fig, ax = plt.subplots()
+    avg_price_state.plot(kind="bar", ax=ax)
+    ax.set_title("Average Price per Sqft by State")
+    ax.set_ylabel("₹ per Sqft")
+    ax.set_xlabel("State / UT")
+    plt.xticks(rotation=45)
+
+    st.pyplot(fig)
+
+# Price growth by tier
+with col5:
+    growth_tier = (
+        filtered_df
+        .groupby("Market Tier")["YoY Price Growth (%)"]
+        .mean()
+    )
+
+    fig, ax = plt.subplots()
+    growth_tier.plot(kind="bar", ax=ax, color="green")
+    ax.set_title("Average YoY Growth by Market Tier")
+    ax.set_ylabel("YoY Growth (%)")
+    ax.set_xlabel("Market Tier")
+    plt.xticks(rotation=20)
+
+    st.pyplot(fig)
+
+# Data table
+st.subheader("📋 Raw Data Preview")
+st.dataframe(filtered_df)
