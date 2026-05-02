@@ -1,89 +1,52 @@
 import streamlit as st
 
-# -----------------------------
-# App Title
-# -----------------------------
-st.set_page_config(page_title="Indian Real Estate Price Estimator", layout="centered")
-st.title("🏠 Indian Real Estate Price Estimator")
+# ---------- SESSION STATE INITIALIZATION ----------
+def init_session_state():
+    if "view" not in st.session_state:
+        st.session_state.view = "india"
 
-st.write("Select your preferences to estimate the property value.")
+    if "selected_state" not in st.session_state:
+        st.session_state.selected_state = None
 
-# -----------------------------
-# City-wise base price per sq.ft (₹)
-# -----------------------------
-city_price = {
-    "Bangalore": 7500,
-    "Chennai": 6500,
-    "Hyderabad": 6000,
-    "Mumbai": 12000,
-    "Delhi": 9000,
-    "Pune": 7000,
-    "Coimbatore": 5000,
-    "Madurai": 4200
-}
+    if "selected_city" not in st.session_state:
+        st.session_state.selected_city = None
 
-# -----------------------------
-# User Inputs
-# -----------------------------
-city = st.selectbox("📍 Select City", list(city_price.keys()))
 
-property_type = st.radio(
-    "🏢 Property Type",
-    ["Apartment", "Independent House"]
-)
+# ---------- NAVIGATION HANDLER ----------
+def manage_navigation(state_df, city_df):
+    init_session_state()
 
-area_sqft = st.slider(
-    "📐 Built-up Area (in sq.ft)",
-    min_value=500,
-    max_value=5000,
-    step=50,
-    value=1000
-)
+    # Navigation header
+    st.sidebar.title("🧭 Dashboard Navigation")
 
-bhk = st.selectbox(
-    "🛏️ Number of Bedrooms (BHK)",
-    [1, 2, 3, 4, 5]
-)
+    # Back button logic
+    if st.session_state.view != "india":
+        if st.sidebar.button("⬅ Back"):
+            if st.session_state.view == "city":
+                st.session_state.view = "state"
+                st.session_state.selected_city = None
+            elif st.session_state.view == "state":
+                st.session_state.view = "india"
+                st.session_state.selected_state = None
 
-property_age = st.slider(
-    "🏗️ Property Age (Years)",
-    min_value=0,
-    max_value=30,
-    value=5
-)
+    # Page routing
+    if st.session_state.view == "india":
+        show_india_view(state_df)
 
-amenities = st.multiselect(
-    "⭐ Amenities",
-    ["Parking", "Lift", "Power Backup", "Gym", "Swimming Pool", "Security"]
-)
+    elif st.session_state.view == "state":
+        show_state_view(state_df, city_df)
 
-# -----------------------------
-# Price Calculation Logic
-# -----------------------------
-base_price = city_price[city] * area_sqft
+    elif st.session_state.view == "city":
+        show_city_view(city_df)
+        show_state_city_comparison(state_df, city_df)
 
-# Property type adjustment
-if property_type == "Independent House":
-    base_price *= 1.15
 
-# BHK factor
-bhk_factor = 1 + (bhk - 1) * 0.10
-base_price *= bhk_factor
+# ---------- STATE CHANGE HELPERS ----------
+def go_to_state_view(selected_state):
+    st.session_state.selected_state = selected_state
+    st.session_state.view = "state"
 
-# Depreciation based on property age
-age_depreciation = max(0.6, 1 - (property_age * 0.01))
-base_price *= age_depreciation
 
-# Amenities premium
-amenities_bonus = 1 + (len(amenities) * 0.03)
-final_price = base_price * amenities_bonus
-
-# -----------------------------
-# Display Result
-# -----------------------------
-st.markdown("---")
-if st.button("💰 Estimate Property Price"):
-    st.subheader("📊 Estimated Property Value")
-    st.success(f"₹ {final_price:,.0f}")
-
-    st.caption("⚠️ This is an approximate estimate based on selected preferences.")
+def go_to_city_view(selected_city):
+    st.session_state.selected_city = selected_city
+    st.session_state.view = "city"
