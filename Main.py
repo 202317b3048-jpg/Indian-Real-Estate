@@ -1,19 +1,22 @@
 import streamlit as st
 import pandas as pd
 
-# --------------------------------------------------
-# Page Setup
-# --------------------------------------------------
-st.set_page_config(page_title="Property Price Estimator", layout="centered")
+# -------------------------------
+# Page Configuration
+# -------------------------------
+st.set_page_config(
+    page_title="Indian Real Estate Estimator",
+    layout="centered"
+)
 
-st.title("🏠 Property Price Estimator – India")
+st.title("🏠 Indian Real Estate Price Estimator")
 st.caption("Select your preferences to estimate property value")
 
-# --------------------------------------------------
+# -------------------------------
 # Upload Dataset
-# --------------------------------------------------
+# -------------------------------
 uploaded_file = st.file_uploader(
-    "Upload Real Estate Dataset (Excel)",
+    "Upload Indian Real Estate Dataset (Excel)",
     type=["xlsx"]
 )
 
@@ -21,15 +24,15 @@ if uploaded_file is None:
     st.info("Please upload the Excel file to continue.")
     st.stop()
 
-# --------------------------------------------------
+# -------------------------------
 # Load Data
-# --------------------------------------------------
+# -------------------------------
 df = pd.read_excel(uploaded_file, sheet_name="Raw data")
 
-# --------------------------------------------------
-# User Preferences
-# --------------------------------------------------
-st.subheader("📍 Location Preference")
+# -------------------------------
+# Location Selection
+# -------------------------------
+st.subheader("📍 Location Preferences")
 
 state = st.selectbox(
     "Select State / Union Territory",
@@ -48,10 +51,10 @@ city_data = state_df[state_df["City"] == city].iloc[0]
 price_per_sqft = city_data["Price/sqft (₹)"]
 yoy_growth = city_data["YoY Price Growth (%)"]
 
-# --------------------------------------------------
-# Property Details
-# --------------------------------------------------
-st.subheader("🏢 Property Details")
+# -------------------------------
+# Property Preferences
+# -------------------------------
+st.subheader("🏢 Property Preferences")
 
 area = st.number_input(
     "Built-up Area (sqft)",
@@ -70,15 +73,19 @@ furnishing = st.selectbox(
     ["Unfurnished", "Semi-Furnished", "Fully Furnished"]
 )
 
-# --------------------------------------------------
-# Estimation
-# --------------------------------------------------
-if st.button("💰 Estimate Property Price"):
+parking = st.radio(
+    "Parking Available",
+    ["Yes", "No"]
+)
 
-    # Base calculation
+# -------------------------------
+# Estimation Logic
+# -------------------------------
+if st.button("💰 Estimate Property Value"):
+
     estimated_price = area * price_per_sqft
 
-    # Age depreciation
+    # Depreciation based on age
     estimated_price *= max(0.75, 1 - property_age * 0.01)
 
     # Furnishing premium
@@ -87,24 +94,19 @@ if st.button("💰 Estimate Property Price"):
     elif furnishing == "Fully Furnished":
         estimated_price *= 1.10
 
-    # Market growth
+    # Parking premium
+    if parking == "Yes":
+        estimated_price *= 1.03
+
+    # Market growth adjustment
     estimated_price *= (1 + yoy_growth / 100)
 
-    # --------------------------------------------------
-    # Result
-    # --------------------------------------------------
-    st.success("✅ Estimation Complete!")
+    # -------------------------------
+    # Display Result
+    # -------------------------------
+    st.success("✅ Property Value Estimated")
 
     st.subheader("📊 Estimated Property Value")
 
     st.write(f"**State:** {state}")
     st.write(f"**City:** {city}")
-    st.write(f"**Area:** {area} sqft")
-    st.write(f"**Price per Sqft:** ₹{price_per_sqft:,.0f}")
-
-    st.metric(
-        "💰 Estimated Price (INR)",
-        f"₹ {estimated_price:,.0f}"
-    )
-
-    st.caption("⚠️ This is a market-based indicative estimate.")
