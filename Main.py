@@ -1,121 +1,89 @@
 import streamlit as st
-import pandas as pd
 
-# -------------------------------
-# Page Configuration
-# -------------------------------
-st.set_page_config(
-    page_title="Indian Real Estate Estimator",
-    layout="centered"
-)
-
+# -----------------------------
+# App Title
+# -----------------------------
+st.set_page_config(page_title="Indian Real Estate Price Estimator", layout="centered")
 st.title("🏠 Indian Real Estate Price Estimator")
-st.caption("Select your preferences to estimate property value")
 
-# -------------------------------
-# Upload Dataset
-# -------------------------------
-uploaded_file = st.file_uploader(
-    "Upload Indian Real Estate Dataset (Excel)",
-    type=["xlsx"]
+st.write("Select your preferences to estimate the property value.")
+
+# -----------------------------
+# City-wise base price per sq.ft (₹)
+# -----------------------------
+city_price = {
+    "Bangalore": 7500,
+    "Chennai": 6500,
+    "Hyderabad": 6000,
+    "Mumbai": 12000,
+    "Delhi": 9000,
+    "Pune": 7000,
+    "Coimbatore": 5000,
+    "Madurai": 4200
+}
+
+# -----------------------------
+# User Inputs
+# -----------------------------
+city = st.selectbox("📍 Select City", list(city_price.keys()))
+
+property_type = st.radio(
+    "🏢 Property Type",
+    ["Apartment", "Independent House"]
 )
 
-if uploaded_file is None:
-    st.info("Please upload the Excel file to continue.")
-    st.stop()
-
-# -------------------------------
-# Load Data
-# -------------------------------
-df = pd.read_excel(uploaded_file, sheet_name="Raw data")
-
-# -------------------------------
-# Location Selection
-# -------------------------------
-st.subheader("📍 Location Preferences")
-
-state = st.selectbox(
-    "Select State / Union Territory",
-    sorted(df["State / Union Territory"].dropna().unique())
+area_sqft = st.slider(
+    "📐 Built-up Area (in sq.ft)",
+    min_value=500,
+    max_value=5000,
+    step=50,
+    value=1000
 )
 
-state_df = df[df["State / Union Territory"] == state]
-
-city = st.selectbox(
-    "Select City",
-    sorted(state_df["City"].dropna().unique())
+bhk = st.selectbox(
+    "🛏️ Number of Bedrooms (BHK)",
+    [1, 2, 3, 4, 5]
 )
 
-city_data = state_df[state_df["City"] == city].iloc[0]
-
-price_per_sqft = city_data["Price/sqft (₹)"]
-yoy_growth = city_data["YoY Price Growth (%)"]
-
-# -------------------------------
-# Property Preferences
-# -------------------------------
-st.subheader("🏢 Property Preferences")
-
-area = st.number_input(
-    "Built-up Area (sqft)",
-    min_value=300,
-    step=50
-)
-
-property_age = st.number_input(
-    "Property Age (Years)",
+property_age = st.slider(
+    "🏗️ Property Age (Years)",
     min_value=0,
-    step=1
+    max_value=30,
+    value=5
 )
 
-furnishing = st.selectbox(
-    "Furnishing Status",
-    ["Unfurnished", "Semi-Furnished", "Fully Furnished"]
+amenities = st.multiselect(
+    "⭐ Amenities",
+    ["Parking", "Lift", "Power Backup", "Gym", "Swimming Pool", "Security"]
 )
 
-parking = st.radio(
-    "Parking Available",
-    ["Yes", "No"]
-)
+# -----------------------------
+# Price Calculation Logic
+# -----------------------------
+base_price = city_price[city] * area_sqft
 
-# -------------------------------
-# Estimation Logic
-# -------------------------------
-if st.button("💰 Estimate Property Value"):
+# Property type adjustment
+if property_type == "Independent House":
+    base_price *= 1.15
 
-    estimated_price = area * price_per_sqft
+# BHK factor
+bhk_factor = 1 + (bhk - 1) * 0.10
+base_price *= bhk_factor
 
-    # Depreciation based on age
-    estimated_price *= max(0.75, 1 - property_age * 0.01)
+# Depreciation based on property age
+age_depreciation = max(0.6, 1 - (property_age * 0.01))
+base_price *= age_depreciation
 
-    # Furnishing premium
-    if furnishing == "Semi-Furnished":
-        estimated_price *= 1.05
-    elif furnishing == "Fully Furnished":
-        estimated_price *= 1.10
+# Amenities premium
+amenities_bonus = 1 + (len(amenities) * 0.03)
+final_price = base_price * amenities_bonus
 
-    # Parking premium
-    if parking == "Yes":
-        estimated_price *= 1.03
-
-    # Market growth adjustment
-    estimated_price *= (1 + yoy_growth / 100)
-
-    # -------------------------------
-    # Display Result
-    # -------------------------------
-    st.success("✅ Property Value Estimated")
-
+# -----------------------------
+# Display Result
+# -----------------------------
+st.markdown("---")
+if st.button("💰 Estimate Property Price"):
     st.subheader("📊 Estimated Property Value")
+    st.success(f"₹ {final_price:,.0f}")
 
-    st.write(f"**State:** {state}")
-    st.write(f"**City:** {city}")
-    st.write(f"**Area:** {area} sqft")
-    st.write(f"**Average Price / Sqft:** ₹{price_per_sqft:,.0f}")
-
-    st.metric(
-        "💰 Estimated Property Price (INR)",
-        f"₹ {estimated_price:,.0f}"
-    )
-
-    st.caption("⚠️ This is an indicative estimate based on market averages.")
+    st.caption("⚠️ This is an approximate estimate based on selected preferences.")
