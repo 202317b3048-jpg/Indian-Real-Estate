@@ -110,3 +110,12 @@ if st.button("💰 Estimate Property Value"):
 
     st.write(f"**State:** {state}")
     st.write(f"**City:** {city}")
+    st.write(f"**Area:** {area} sqft")
+    st.write(f"**Average Price / Sqft:** ₹{price_per_sqft:,.0f}")
+
+    st.metric(
+        "💰 Estimated Property Price (INR)",
+        f"₹ {estimated_price:,.0f}"
+    )
+
+    st.caption("⚠️ This is an indicative estimate based on market averages.")
