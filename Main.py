@@ -13,33 +13,33 @@ st.title("🏢 India Property Price Estimator")
 st.caption("Estimate property value using India real estate market data")
 
 # --------------------------------------------------
-# Load Dataset (SAFE + ERROR HANDLING)
+# Upload Excel File
+# --------------------------------------------------
+st.subheader("📂 Upload Real Estate Dataset")
+
+uploaded_file = st.file_uploader(
+    "Upload 'Real_estate_data_India 2.xlsx'",
+    type=["xlsx"]
+)
+
+if uploaded_file is None:
+    st.warning("Please upload the Excel file to continue.")
+    st.stop()
+
+# --------------------------------------------------
+# Load Data Safely
 # --------------------------------------------------
 @st.cache_data
-def load_data():
-    try:
-        df = pd.read_excel(
-            "Real_estate_data_India 2.xlsx",
-            sheet_name="Raw data"
-        )
-        return df
-    except FileNotFoundError:
-        st.error("❌ Excel file not found. Please ensure 'Real_estate_data_India 2.xlsx' is in the app folder.")
-        return None
-    except ValueError:
-        st.error("❌ Sheet name 'Raw data' not found. Please check the Excel sheet name.")
-        return None
-    except ImportError:
-        st.error("❌ Missing dependency: openpyxl. Please install it or add it to requirements.txt.")
-        return None
-    except Exception as e:
-        st.error(f"❌ Unexpected error: {e}")
-        return None
+def load_data(file):
+    return pd.read_excel(
+        file,
+        sheet_name="Raw data"
+    )
 
-
-df = load_data()
-
-if df is None:
+try:
+    df = load_data(uploaded_file)
+except Exception as e:
+    st.error(f"❌ Unable to read Excel file: {e}")
     st.stop()
 
 # --------------------------------------------------
@@ -59,21 +59,89 @@ city = st.selectbox(
     sorted(state_df["City"].dropna().unique())
 )
 
-city_row = state_df[state_df["City"] == city].iloc[0]
+row = state_df[state_df["City"] == city].iloc[0]
 
-# Extract values safely
-market_tier = city_row["Market Tier"]
-price_per_sqft = float(city_row["Price/sqft (₹)"])
-median_price_2025 = city_row["Median House Price (₹ Lakh) -2025"]
-yoy_growth = float(city_row["YoY Price Growth (%)"])
-cagr_5y = float(city_row["5-Year CAGR (%)"])
+# Extract values
+market_tier = row["Market Tier"]
+price_per_sqft = float(row["Price/sqft (₹)"])
+median_price = row["Median House Price (₹ Lakh) -2025"]
+yoy_growth = float(row["YoY Price Growth (%)"])
+cagr_5y = float(row["5-Year CAGR (%)"])
 
 st.info(
     f"""
 **Market Tier:** {market_tier}  
 **Avg Price / Sqft:** ₹{price_per_sqft:,.0f}  
-**Median House Price (2025):** ₹{median_price_2025} Lakh  
+**Median Price (2025):** ₹{median_price} Lakh
 """
 )
 
 # --------------------------------------------------
+# Property Inputs
+# --------------------------------------------------
+st.subheader("🏠 Property Details")
+
+property_type = st.selectbox(
+    "Property Type",
+    ["Apartment", "Independent House", "Villa", "Plot"]
+)
+
+built_up_area = st.number_input(
+    "Built-up Area (sqft)",
+    min_value=300,
+    step=50
+)
+
+property_age = st.number_input(
+    "Property Age (Years)",
+    min_value=0,
+    step=1
+)
+
+furnishing = st.selectbox(
+    "Furnishing Status",
+    ["Unfurnished", "Semi-Furnished", "Fully Furnished"]
+)
+
+parking = st.radio("Parking Facility", ["Yes", "No"])
+
+# --------------------------------------------------
+# Market Metrics
+# --------------------------------------------------
+st.subheader("📈 Market Indicators")
+
+col1, col2 = st.columns(2)
+col1.metric("YoY Growth (%)", f"{yoy_growth}%")
+col2.metric("5-Year CAGR (%)", f"{cagr_5y}%")
+
+# --------------------------------------------------
+# Estimation Logic
+# --------------------------------------------------
+if st.button("💰 Estimate Property Value"):
+
+    price = built_up_area * price_per_sqft
+
+    # Age depreciation
+    price *= max(0.75, 1 - (property_age * 0.01))
+
+    # Furnishing premium
+    if furnishing == "Semi-Furnished":
+        price *= 1.05
+    elif furnishing == "Fully Furnished":
+        price *= 1.10
+
+    # Parking premium
+    if parking == "Yes":
+        price *= 1.03
+
+    # Market growth
+    price *= (1 + yoy_growth / 100)
+
+    st.success("✅ Property value estimated successfully")
+
+    st.metric(
+        "💰 Estimated Property Value",
+        f"₹ {price:,.0f}"
+    )
+
+    st.caption("⚠️ Indicative estimate based on market averages.")
