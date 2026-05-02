@@ -1,105 +1,142 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 
-# Page config
-st.set_page_config(page_title="India Real Estate Dashboard", layout="wide")
+# --------------------------------------------------
+# Page Configuration
+# --------------------------------------------------
+st.set_page_config(
+    page_title="India Property Price Estimator",
+    layout="centered"
+)
 
-# Load data
+st.title("🏢 India Property Price Estimator")
+st.caption("Estimate property value using real estate market data across India")
+
+# --------------------------------------------------
+# Load Dataset
+# --------------------------------------------------
 @st.cache_data
 def load_data():
-    df = pd.read_excel(
+    return pd.read_excel(
         "Real_estate_data_India 2.xlsx",
         sheet_name="Raw data",
         engine="openpyxl"
     )
-    return df
 
 df = load_data()
 
-# Title
-st.title("🏠 India Real Estate Market Dashboard")
+# --------------------------------------------------
+# Property Location Selection
+# --------------------------------------------------
+st.subheader("📍 Location Details")
 
-# Sidebar filters
-st.sidebar.header("Filters")
-
-states = st.sidebar.multiselect(
-    "Select State / UT",
-    options=df["State / Union Territory"].unique(),
-    default=df["State / Union Territory"].unique()[:5]
+state = st.selectbox(
+    "State / Union Territory",
+    sorted(df["State / Union Territory"].unique())
 )
 
-market_tier = st.sidebar.multiselect(
-    "Select Market Tier",
-    options=df["Market Tier"].unique(),
-    default=df["Market Tier"].unique()
+city_df = df[df["State / Union Territory"] == state]
+
+city = st.selectbox(
+    "City",
+    sorted(city_df["City"].dropna().unique())
 )
 
-filtered_df = df[
-    (df["State / Union Territory"].isin(states)) &
-    (df["Market Tier"].isin(market_tier))
-]
+row = city_df[city_df["City"] == city].iloc[0]
 
-# KPI section
-st.subheader("📊 Key Metrics")
+market_tier = row["Market Tier"]
+avg_price_per_sqft = row["Price/sqft (₹)"]
+median_price_2025 = row["Median House Price (₹ Lakh) -2025"]
 
-col1, col2, col3 = st.columns(3)
+st.info(f"""
+**Market Tier:** {market_tier}  
+**Avg Price / Sqft:** ₹{avg_price_per_sqft:,.0f}  
+**Median House Price (2025):** ₹{median_price_2025} Lakh
+""")
 
-col1.metric(
-    "Average Price / Sqft (₹)",
-    f"{filtered_df['Price/sqft (₹)'].mean():,.0f}"
+# --------------------------------------------------
+# Property Details
+# --------------------------------------------------
+st.subheader("🏠 Property Details")
+
+property_type = st.selectbox(
+    "Property Type",
+    ["Apartment", "Independent House", "Villa", "Plot"]
 )
 
-col2.metric(
-    "Median House Price 2025 (₹ Lakh)",
-    f"{filtered_df['Median House Price (₹ Lakh) -2025'].mean():,.1f}"
+built_up_area = st.number_input(
+    "Built-up Area (sqft)",
+    min_value=300,
+    step=50
 )
 
-col3.metric(
-    "Avg YoY Price Growth (%)",
-    f"{filtered_df['YoY Price Growth (%)'].mean():,.2f}"
+bedrooms = st.selectbox("Bedrooms (BHK)", [1, 2, 3, 4, 5])
+bathrooms = st.selectbox("Bathrooms", [1, 2, 3, 4])
+
+property_age = st.number_input(
+    "Property Age (Years)",
+    min_value=0,
+    step=1
 )
 
-# Charts
-st.subheader("📈 Price Analysis")
+furnishing_status = st.selectbox(
+    "Furnishing Status",
+    ["Unfurnished", "Semi-Furnished", "Fully Furnished"]
+)
 
-col4, col5 = st.columns(2)
+parking = st.radio("Parking Facility", ["Yes", "No"])
 
-# Average price per sqft by state
-with col4:
-    avg_price_state = (
-        filtered_df
-        .groupby("State / Union Territory")["Price/sqft (₹)"]
-        .mean()
-        .sort_values(ascending=False)
+# --------------------------------------------------
+# Investment Metrics (Dataset Based)
+# --------------------------------------------------
+st.subheader("📈 Market Indicators")
+
+yoy_growth = row["YoY Price Growth (%)"]
+cagr_5y = row["5-Year CAGR (%)"]
+
+st.metric("YoY Price Growth (%)", f"{yoy_growth}%")
+st.metric("5-Year CAGR (%)", f"{cagr_5y}%")
+
+# --------------------------------------------------
+# Price Estimation Logic
+# --------------------------------------------------
+if st.button("💰 Estimate Property Value"):
+
+    # Base Price
+    estimated_price = built_up_area * avg_price_per_sqft
+
+    # Property age depreciation
+    estimated_price *= max(0.75, 1 - (property_age * 0.01))
+
+    # Furnishing premium
+    if furnishing_status == "Semi-Furnished":
+        estimated_price *= 1.05
+    elif furnishing_status == "Fully Furnished":
+        estimated_price *= 1.10
+
+    # Parking premium
+    if parking == "Yes":
+        estimated_price *= 1.03
+
+    # Market growth bonus
+    estimated_price *= (1 + yoy_growth / 100)
+
+    st.success("✅ Property value estimated successfully!")
+
+    # --------------------------------------------------
+    # Display Result
+    # --------------------------------------------------
+    st.subheader("📊 Estimated Property Value")
+
+    st.write(f"**State:** {state}")
+    st.write(f"**City:** {city}")
+    st.write(f"**Property Type:** {property_type}")
+    st.write(f"**Built-up Area:** {built_up_area} sqft")
+    st.write(f"**Market Tier:** {market_tier}")
+
+    st.metric(
+        label="💰 Estimated Sale Price (INR)",
+        value=f"₹ {estimated_price:,.0f}"
     )
 
-    fig, ax = plt.subplots()
-    avg_price_state.plot(kind="bar", ax=ax)
-    ax.set_title("Average Price per Sqft by State")
-    ax.set_ylabel("₹ per Sqft")
-    ax.set_xlabel("State / UT")
-    plt.xticks(rotation=45)
-
-    st.pyplot(fig)
-
-# Price growth by tier
-with col5:
-    growth_tier = (
-        filtered_df
-        .groupby("Market Tier")["YoY Price Growth (%)"]
-        .mean()
-    )
-
-    fig, ax = plt.subplots()
-    growth_tier.plot(kind="bar", ax=ax, color="green")
-    ax.set_title("Average YoY Growth by Market Tier")
-    ax.set_ylabel("YoY Growth (%)")
-    ax.set_xlabel("Market Tier")
-    plt.xticks(rotation=20)
-
-    st.pyplot(fig)
-
-# Data table
-st.subheader("📋 Raw Data Preview")
-st.dataframe(filtered_df)
+    st.caption("⚠️ This estimate is derived from market averages and should be used for reference only.")
